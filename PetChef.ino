@@ -2,11 +2,15 @@
 
 #include <ESP8266WiFi.h>
 
+#include <Servo.h>
+
+#include <Wire.h>
+
+#include <LiquidCrystal_I2C.h>
+
 #include "Adafruit_MQTT.h"
 
 #include "Adafruit_MQTT_Client.h"
-
-#include <Servo.h>
 
 #include <NTPClient.h>
 
@@ -14,29 +18,41 @@
 
 // Setup Wifi
 
-#define WIFI_SSID "***********" //Nome da sua rede Wifi
+#define WIFI_SSID "**********" //Nome da sua rede Wifi
 
-#define WIFI_PASS "***********" //Senha da sua rede wifi
+#define WIFI_PASS "**********" //Senha da sua rede wifi
 
 #define MQTT_SERV "io.adafruit.com"
 
 #define MQTT_PORT 1883
 
-#define MQTT_NAME "***********" //Seu nome de usuário no Adafruit
+#define MQTT_NAME "**********" //Seu nome de usuário no Adafruit
 
-#define MQTT_PASS "***********" //Sua chave do adafruit
+#define MQTT_PASS "**********" //Sua chave do adafruit
+
+//Setup LCD
+
+#define col 16 // Serve para definir o numero de colunas do display utilizado
+
+#define lin  2 // Serve para definir o numero de linhas do display utilizado
+
+#define ende  0x27 // Serve para definir o endereço do display.
 
 WiFiUDP ntpUDP;
 
 NTPClient timeClient(ntpUDP, "pool.ntp.org", -10800, 60000); //Configuração de horário para o Brasil
 
+//Setup Servo
+
 Servo servo;
 
 int PINO_SERVO = D3;    // Porta em que o motor esta posicionado
 
-int ANG_ABRE = 120;
+int ANG_ABRE = 90;
 
-int ANG_FECHA = 0;
+int ANG_FECHA = 30;
+
+//Setup horário print
 
 int  hora, mn, seg;
 
@@ -50,11 +66,14 @@ Adafruit_MQTT_Client mqtt(&client, MQTT_SERV, MQTT_PORT, MQTT_NAME, MQTT_PASS);
 
 Adafruit_MQTT_Subscribe petchef = Adafruit_MQTT_Subscribe(&mqtt, MQTT_NAME "/feeds/petchef");
 
+LiquidCrystal_I2C lcd(ende,col,lin);
+
 boolean feed = true; 
 
 void setup()
 {
   Serial.begin(74880);
+
   timeClient.begin();
   
   //Conectando ao wifi
@@ -71,9 +90,16 @@ void setup()
 
   mqtt.subscribe(&petchef);
 
+  lcd.init();
+
+  lcd.backlight();
+
+  lcd.clear();
+
   servo.attach(PINO_SERVO);
 
   servo.write(ANG_FECHA);
+
   
 }
 
@@ -90,6 +116,20 @@ void loop()
    
   seg = timeClient.getSeconds();
 
+  lcd.setCursor(0,0);
+
+  lcd.print("Hora:");
+
+  lcd.print(hora);
+
+  lcd.print(":");
+
+  lcd.print(mn);
+
+  lcd.print(":");
+
+  lcd.print(seg);
+
   Serial.print("Hora: ");
 
   Serial.print(hora);
@@ -101,8 +141,18 @@ void loop()
   Serial.print(":");
 
   Serial.println(seg);
+
+  lcd.setCursor(0,1);
+
+  lcd.print("Hora Prog:");
+
+  lcd.print(hora_alim);
+
+  lcd.print(':');
+
+  lcd.print(min_alim);
     
-  Serial.print("Hora de Alimentar: ");
+  Serial.print("Hora Alimentar: ");
 
   Serial.print(hora_alim);
 
@@ -122,15 +172,26 @@ void loop()
 
     {
       
-      Serial.println((char*) petchef.lastread);
      
     if (!strcmp((char*) petchef.lastread, "ON"))
 
       {
 
+        lcd.clear();
+
+        lcd.setCursor(0,0);
+
+        lcd.print("Ativando");
+
+        lcd.setCursor(0, 1);
+
+        lcd.print("Agora!");
+
+        Serial.println("Ativando agora!!!");
+
         servo.write(ANG_ABRE);
 
-        delay(1000);
+        delay(1500);
 
         servo.write(ANG_FECHA);
 
@@ -140,7 +201,7 @@ void loop()
 
       {
 
-        hora_alim = 18;
+        hora_alim = 15;
 
         min_alim = 30; 
 
@@ -154,11 +215,24 @@ void loop()
 
     { 
 
+      lcd.clear();
+
+      lcd.setCursor(0,0);
+
+      lcd.print("Ativando");
+
+      lcd.setCursor(0, 1);
+
+      lcd.print("Agora!");
+
+      Serial.println("Ativando agora!!!");
+
       servo.write(ANG_ABRE);
 
-      delay(1000);
+      delay(1500);
 
       servo.write(ANG_FECHA);
+
 
       feed = false; 
 
